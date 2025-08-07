@@ -1,103 +1,115 @@
-import Image from "next/image";
+import CarouselSection from "@/components/CarouselSection";
+import ProductCard from "@/components/ProductCard";
+import BlogSection from "@/components/BlogSection";
+import { Star, Settings, Zap, ShieldCheck, Truck, Tag } from "lucide-react";
+import prisma from "@/lib/prisma";
 
-export default function Home() {
+// Homepage updated to match the new visual requests.
+export default async function HomePage() {
+  const featuredProducts = await prisma.product.findMany({
+    where: { isFeatured: true },
+    take: 4,
+    orderBy: { createdAt: 'desc' },
+  });
+
+  const latestNews = await prisma.blog.findMany({
+    take: 3,
+    orderBy: { createdAt: 'desc' },
+  });
+
+  // Updated carousel data to match the screenshot
+  const carouselImages = [
+    { id: '1', title: "QUALITY TIRES & WHEELS", imageUrl: "https://images.unsplash.com/photo-1558981403-c5f9899a28bc?q=80&w=1920&h=500&fit=crop" },
+    { id: '2', title: "PERFORMANCE EXHAUST SYSTEMS", imageUrl: "https://images.unsplash.com/photo-1617109826139-c51974815b5a?q=80&w=1920&h=500&fit=crop" },
+    { id: '3', title: "HELMETS & RIDING GEAR", imageUrl: "https://images.unsplash.com/photo-1599824586239-658a552156a7?q=80&w=1920&h=500&fit=crop" },
+    { id: '4', title: "ESSENTIAL MAINTENANCE PARTS", imageUrl: "https://images.unsplash.com/photo-1620815132790-252438503816?q=80&w=1920&h=500&fit=crop" },
+    { id: '5', title: "CUSTOM ACCESSORIES", imageUrl: "https://images.unsplash.com/photo-1617097241033-5c4d69352136?q=80&w=1920&h=500&fit=crop" },
+  ];
+
   return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+    <>
+      <CarouselSection images={carouselImages} />
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+      {/* Stats Section - Commented out as requested
+      <section className="bg-white py-16">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+            <div className="bg-black p-8 rounded-lg">
+              <h3 className="text-4xl font-extrabold text-white">5000+</h3>
+              <p className="text-sm text-gray-400 mt-2">Products Sold</p>
+            </div>
+            <div className="bg-black p-8 rounded-lg">
+              <h3 className="text-4xl font-extrabold text-white">15K+</h3>
+              <p className="text-sm text-gray-400 mt-2">Happy Customers</p>
+            </div>
+            <div className="bg-black p-8 rounded-lg">
+              <h3 className="text-4xl font-extrabold text-white">10+</h3>
+              <p className="text-sm text-gray-400 mt-2">Years of Experience</p>
+            </div>
+            <div className="bg-black p-8 rounded-lg">
+              <h3 className="text-4xl font-extrabold text-red-500">99%</h3>
+              <p className="text-sm text-gray-400 mt-2">Positive Feedback</p>
+            </div>
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+      </section>
+      */}
+
+      {/* Featured Products Section */}
+      <section className="bg-gray-50 py-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight text-gray-900">FEATURED PRODUCTS</h2>
+            <p className="mt-4 max-w-2xl mx-auto text-lg text-gray-500">Top picks from our curated collection of premium parts.</p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+            {featuredProducts.map(product => (
+              <ProductCard key={product.id} product={product} />
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Why Choose Us Section */}
+      <section className="bg-white py-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight text-gray-900">WHY CHOOSE US</h2>
+            <p className="mt-4 max-w-2xl mx-auto text-lg text-gray-500">Your trusted partner for quality, service, and speed.</p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
+            <div className="p-8 bg-white border border-gray-200 rounded-lg shadow-sm">
+              <div className="flex items-center justify-center h-16 w-16 rounded-full bg-red-100 text-red-500 mx-auto mb-4"><ShieldCheck size={32} /></div>
+              <h3 className="text-xl font-bold text-gray-900">Premium Quality</h3>
+              <p className="mt-2 text-gray-500">We source only the best parts and accessories to ensure durability and performance.</p>
+            </div>
+            <div className="p-8 bg-white border border-gray-200 rounded-lg shadow-sm">
+              <div className="flex items-center justify-center h-16 w-16 rounded-full bg-red-100 text-red-500 mx-auto mb-4"><Settings size={32} /></div>
+              <h3 className="text-xl font-bold text-gray-900">Expert Service</h3>
+              <p className="mt-2 text-gray-500">Our knowledgeable team is here to help you find the perfect fit for your ride.</p>
+            </div>
+            <div className="p-8 bg-white border border-gray-200 rounded-lg shadow-sm">
+              <div className="flex items-center justify-center h-16 w-16 rounded-full bg-red-100 text-red-500 mx-auto mb-4"><Truck size={32} /></div>
+              <h3 className="text-xl font-bold text-gray-900">Fast Delivery</h3>
+              <p className="mt-2 text-gray-500">Get your parts delivered to your doorstep quickly and reliably, nationwide.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <BlogSection blogs={latestNews} />
+
+      {/* Ready to Ride? (CTA) Section */}
+      <section className="bg-gradient-to-r from-black to-red-600">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 text-center">
+          <h2 className="text-4xl font-extrabold text-white">READY TO RIDE?</h2>
+          <p className="mt-4 text-lg text-gray-200">Browse our extensive collection of parts and accessories to get started.</p>
+          <div className="mt-8 flex justify-center space-x-4">
+            <a href="#" className="inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-black bg-white hover:bg-gray-200">EXPLORE PRODUCTS</a>
+            <a href="#" className="inline-flex items-center justify-center px-6 py-3 border border-white text-base font-medium rounded-md text-white hover:bg-white hover:text-black">CONTACT SUPPORT</a>
+          </div>
+        </div>
+      </section>
+    </>
   );
 }
