@@ -1,3 +1,5 @@
+import Link from 'next/link';
+
 export default function OrderConfirmationPage({ params }: { params: { orderId: string } }) {
   return (
     <div className="bg-white">
@@ -16,12 +18,13 @@ export default function OrderConfirmationPage({ params }: { params: { orderId: s
             We are processing your order and will send updates to the contact details you provided.
           </p>
           <div className="mt-6">
-            <a
+            {/* Corrected: Replaced <a> with <Link> */}
+            <Link
               href="/"
               className="text-base font-medium text-red-600 hover:text-red-500"
             >
               Continue Shopping<span aria-hidden="true"> &rarr;</span>
-            </a>
+            </Link>
           </div>
         </div>
       </div>
