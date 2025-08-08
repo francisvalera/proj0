@@ -1,6 +1,11 @@
 import Link from 'next/link';
 
-export default function OrderConfirmationPage({ params }: { params: { orderId: string } }) {
+// This is the new standard for typing and handling props on dynamic pages.
+export default async function OrderConfirmationPage(
+  props: { params: Promise<{ orderId: string }> }
+) {
+  const { orderId } = await props.params; // Await params
+
   return (
     <div className="bg-white">
       <div className="max-w-3xl mx-auto px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
@@ -12,13 +17,12 @@ export default function OrderConfirmationPage({ params }: { params: { orderId: s
             Your order has been placed
           </h1>
           <p className="mt-2 text-base text-gray-500">
-            Your order <span className="font-medium text-gray-900">#{params.orderId}</span> has been placed successfully.
+            Your order <span className="font-medium text-gray-900">#{orderId}</span> has been placed successfully.
           </p>
           <p className="mt-2 text-base text-gray-500">
             We are processing your order and will send updates to the contact details you provided.
           </p>
           <div className="mt-6">
-            {/* Corrected: Replaced <a> with <Link> */}
             <Link
               href="/"
               className="text-base font-medium text-red-600 hover:text-red-500"

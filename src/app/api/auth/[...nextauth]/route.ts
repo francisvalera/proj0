@@ -6,7 +6,8 @@ import prisma from "@/lib/prisma";
 import bcrypt from "bcrypt";
 import { User } from "@prisma/client";
 
-export const authOptions: AuthOptions = {
+// Corrected: Removed the 'export' keyword from this line.
+const authOptions: AuthOptions = {
   adapter: PrismaAdapter(prisma),
   providers: [
     GoogleProvider({
@@ -20,10 +21,7 @@ export const authOptions: AuthOptions = {
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        console.log("Attempting to authorize user:", credentials?.email);
-
         if (!credentials?.email || !credentials.password) {
-          console.log("Missing credentials.");
           return null;
         }
 
@@ -32,25 +30,18 @@ export const authOptions: AuthOptions = {
         });
 
         if (!user || !user.password) {
-          console.log("User not found or user has no password set.");
           return null;
         }
-        
-        console.log("User found in database:", user.email);
 
         const isPasswordValid = await bcrypt.compare(
           credentials.password,
           user.password
         );
-        
-        console.log("Password validation result:", isPasswordValid);
 
         if (!isPasswordValid) {
-          console.log("Password is not valid.");
           return null;
         }
-        
-        console.log("Authorization successful for:", user.email);
+
         return user;
       },
     }),
