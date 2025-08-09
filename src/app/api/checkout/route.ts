@@ -1,6 +1,18 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { CartItem } from '@/context/CartContext';
+import { Order, Product } from '@prisma/client';
+
+// Define a more specific type for the order object with its relations
+type OrderWithDetails = Order & {
+  items: ({ product: Product })[];
+  shippingAddress: {
+    street: string;
+    barangay: string;
+    city: string;
+    province: string;
+  }
+}
 
 // Helper function to generate the custom Order ID
 const generateOrderId = () => {
