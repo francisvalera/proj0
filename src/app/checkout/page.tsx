@@ -176,7 +176,6 @@ export default function CheckoutPage() {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onConfirm={handleConfirmOrder}
-        isPlacingOrder={isPlacingOrder}
       />
     </>
   );
