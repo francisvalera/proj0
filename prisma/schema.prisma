@@ -6,15 +6,47 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("POSTGRES_PRISMA_URL") // uses the Vercel URL with connection pooling
-  directUrl = env("POSTGRES_URL_NON_POOLING") // uses the Vercel URL for direct access
+  provider = "postgresql"
+  url      = env("POSTGRES_URL")
 }
+
+// --- NEW MODELS FOR ORDERS AND SETTINGS ---
+
+model Settings {
+  id         String @id @default(cuid())
+  storeEmail String
+}
+
+model Order {
+  id              String      @id @default(cuid())
+  orderId         String      @unique // For the KKMTXXX999 ID
+  total           Float
+  customerName    String
+  customerEmail   String
+  customerPhone   String
+  shippingAddress Json // Store the full address object
+  items           OrderItem[]
+  createdAt       DateTime    @default(now())
+  userId          String?     // Optional: link to a registered user
+  user            User?       @relation(fields: [userId], references: [id])
+}
+
+model OrderItem {
+  id        String  @id @default(cuid())
+  quantity  Int
+  price     Float // Price at the time of purchase
+  orderId   String
+  order     Order   @relation(fields: [orderId], references: [id])
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+}
+
+
+// --- EXISTING MODELS ---
 
 model Product {
   id          String    @id @default(cuid())
   name        String
-
   price       Float
   brandName   String
   isFeatured  Boolean   @default(false)
@@ -22,6 +54,7 @@ model Product {
   imageUrl    String?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+  orderItems  OrderItem[]
 }
 
 model Blog {
@@ -33,34 +66,6 @@ model Blog {
   imageUrl    String?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
-}
-
-// Models for NextAuth.js
-model Account {
-  id                 String  @id @default(cuid())
-  userId             String
-  type               String
-  provider           String
-  providerAccountId  String
-  refresh_token      String?  @db.Text
-  access_token       String?  @db.Text
-  expires_at         Int?
-  token_type         String?
-  scope              String?
-  id_token           String?  @db.Text
-  session_state      String?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([provider, providerAccountId])
-}
-
-model Session {
-  id           String   @id @default(cuid())
-  sessionToken String   @unique
-  userId       String
-  expires      DateTime
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 enum UserRole {
@@ -78,6 +83,33 @@ model User {
   role          UserRole  @default(USER)
   accounts      Account[]
   sessions      Session[]
+  orders        Order[]
+}
+
+model Account {
+  id                 String  @id @default(cuid())
+  userId             String
+  type               String
+  provider           String
+  providerAccountId  String
+  refresh_token      String?  @db.Text
+  access_token       String?  @db.Text
+  expires_at         Int?
+  token_type         String?
+  scope              String?
+  id_token           String?  @db.Text
+  session_state      String?
+  user               User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model VerificationToken {

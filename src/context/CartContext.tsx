@@ -3,25 +3,22 @@
 import { createContext, useContext, useState, ReactNode } from 'react';
 import type { Product } from '@prisma/client';
 
-// Define the shape of a single item in the cart
 export interface CartItem extends Product {
   quantity: number;
 }
 
-// Define the shape of the context's value
 interface CartContextType {
   cartItems: CartItem[];
   addToCart: (product: Product, quantity: number) => void;
   removeFromCart: (productId: string) => void;
   updateQuantity: (productId: string, quantity: number) => void;
+  clearCart: () => void; // Add clearCart function
   cartCount: number;
   subtotal: number;
 }
 
-// Create the context with a default value
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
-// Create a custom hook for easy access to the context
 export const useCart = () => {
   const context = useContext(CartContext);
   if (!context) {
@@ -30,7 +27,6 @@ export const useCart = () => {
   return context;
 };
 
-// Create the provider component
 export const CartProvider = ({ children }: { children: ReactNode }) => {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
 
@@ -38,14 +34,12 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     setCartItems((prevItems) => {
       const existingItem = prevItems.find((item) => item.id === product.id);
       if (existingItem) {
-        // If item exists, update its quantity
         return prevItems.map((item) =>
           item.id === product.id
             ? { ...item, quantity: item.quantity + quantity }
             : item
         );
       }
-      // If item doesn't exist, add it to the cart
       return [...prevItems, { ...product, quantity }];
     });
   };
@@ -58,8 +52,12 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     setCartItems((prevItems) =>
       prevItems.map((item) =>
         item.id === productId ? { ...item, quantity: Math.max(0, quantity) } : item
-      ).filter(item => item.quantity > 0) // Also remove item if quantity is 0
+      ).filter(item => item.quantity > 0)
     );
+  };
+
+  const clearCart = () => {
+    setCartItems([]);
   };
 
   const cartCount = cartItems.reduce((count, item) => count + item.quantity, 0);
@@ -70,6 +68,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     addToCart,
     removeFromCart,
     updateQuantity,
+    clearCart, // Export clearCart
     cartCount,
     subtotal,
   };
