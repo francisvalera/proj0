@@ -7,6 +7,7 @@ async function main() {
   console.log('Start seeding ...');
 
   // --- Clear and Seed Products/Blogs (remains the same) ---
+  await prisma.orderItem.deleteMany();
   await prisma.product.deleteMany();
   await prisma.blog.deleteMany();
   console.log('Cleared existing product and blog data.');
