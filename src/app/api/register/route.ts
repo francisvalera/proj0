@@ -26,7 +26,7 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json(newUser, { status: 201 });
-  } catch (error) {
+  } catch (_error) {
     return NextResponse.json({ message: 'An unexpected error occurred' }, { status: 500 });
   }
 }

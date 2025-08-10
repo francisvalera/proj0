@@ -9,6 +9,14 @@ import AddressSelector from "@/components/AddressSelector";
 import ConfirmOrderModal from "@/components/ConfirmOrderModal";
 import LoadingSpinner from "@/components/LoadingSpinner";
 
+export type SummaryItem = {
+  id: string;
+  name: string;
+  quantity: number;
+  price: number;
+  imageUrl?: string;
+};
+
 export default function CheckoutPage() {
   const { data: session } = useSession();
   const { cartItems, cartCount, subtotal, clearCart } = useCart();
@@ -34,12 +42,7 @@ export default function CheckoutPage() {
 
   const total = subtotal; // UI shows grand total only
 
-  const isFormValid = () => {
-    if (!cartCount || cartCount === 0) return false;
-    if (!fullName.trim()) return false;
-    if (!email.trim()) return false;
-    return true;
-  };
+  const isFormValid = () => !!cartCount && !!fullName.trim() && !!email.trim();
 
   const handlePlaceOrder = (e: FormEvent) => {
     e.preventDefault();
@@ -54,6 +57,7 @@ export default function CheckoutPage() {
     setIsRedirecting(true);
 
     const formData = new FormData(formRef.current);
+    const userId = (session?.user as { id?: string } | undefined)?.id;
     const customerInfo = {
       fullName,
       email,
@@ -62,8 +66,8 @@ export default function CheckoutPage() {
       city: String(formData.get("city") || ""),
       barangay: String(formData.get("barangay") || ""),
       street: String(formData.get("street") || ""),
-      userId: (session as any)?.user?.id,
-      sendReceipt: !!sendReceipt,
+      userId,
+      sendReceipt,
     };
 
     try {
@@ -73,23 +77,29 @@ export default function CheckoutPage() {
         body: JSON.stringify({ customerInfo, cartItems, total }),
       });
 
-      if (!res.ok) {
-        const j = await res.json().catch(() => ({}));
-        throw new Error(j?.message || `Checkout failed with ${res.status}`);
-      }
+      if (!res.ok) { const j = await res.json().catch(() => ({})); throw new Error(j?.message || `Checkout failed with ${res.status}`); }
 
       const data = (await res.json()) as { orderId: string };
       router.push(`/order-confirmation/${encodeURIComponent(data.orderId)}`);
       setTimeout(() => clearCart?.(), 500);
       setIsModalOpen(false);
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Something went wrong while placing your order.";
       console.error("Checkout error", err);
-      setError(err?.message || "Something went wrong while placing your order.");
+      setError(msg);
       setIsRedirecting(false);
     } finally {
       setIsPlacingOrder(false);
     }
   };
+
+  const summaryItems: SummaryItem[] = (cartItems || []).map((it) => ({
+    id: it.id,
+    name: it.name,
+    quantity: it.quantity,
+    price: it.price,
+    imageUrl: (it as { imageUrl?: string }).imageUrl,
+  }));
 
   if (!isRedirecting && cartCount === 0) {
     return (
@@ -139,7 +149,6 @@ export default function CheckoutPage() {
               <div>
                 <h2 className="mb-6 border-b pb-4 text-xl font-semibold">Shipping Information</h2>
                 <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                  {/* Your AddressSelector component renders province/city/barangay inputs */}
                   <AddressSelector />
                   <div className="sm:col-span-2">
                     <label htmlFor="street" className="block text-sm font-medium">Street Address, Building, etc.</label>
@@ -149,7 +158,7 @@ export default function CheckoutPage() {
               </div>
             </div>
 
-            {/* Right: Order Summary (sticky desktop, collapsible mobile, default expanded) */}
+            {/* Right: Summary */}
             <div className="h-fit rounded-lg bg-white p-8 shadow-md lg:sticky lg:top-4">
               <details open className="group block lg:open">
                 <summary className="flex cursor-pointer list-none items-center justify-between text-xl font-semibold lg:cursor-default">
@@ -186,7 +195,7 @@ export default function CheckoutPage() {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onConfirm={handleConfirmOrder}
-        summary={{ items: cartItems as any, total, count: cartCount || 0 }}
+        summary={{ items: summaryItems, total, count: cartCount || 0 }}
       />
     </>
   );

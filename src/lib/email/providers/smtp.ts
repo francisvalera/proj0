@@ -1,5 +1,16 @@
-import nodemailer from "nodemailer";
+import nodemailer, { SendMailOptions } from "nodemailer";
+import * as React from "react";
 import { renderEmail } from "@/lib/email/render";
+
+export type SmtpProps = Record<string, unknown>;
+
+export interface SendWithSmtpArgs<TProps extends SmtpProps> {
+  from: string;
+  to: string;
+  subject: string;
+  component: React.ComponentType<TProps>;
+  props: TProps;
+}
 
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST || "smtp.gmail.com",
@@ -11,14 +22,22 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-export async function sendWithSmtp({ from, to, subject, component, props }: any) {
+export async function sendWithSmtp<TProps extends SmtpProps>({
+  from,
+  to,
+  subject,
+  component,
+  props,
+}: SendWithSmtpArgs<TProps>) {
+  // Await the async renderer
   const { html, text } = await renderEmail(component, props);
-  const mailOptions = {
+
+  const mailOptions: SendMailOptions = {
     from,
     to,
     subject,
-    html, // string now, not Promise<string>
-    text, // string now, not Promise<string>
+    html,
+    text,
   };
 
   const info = await transporter.sendMail(mailOptions);

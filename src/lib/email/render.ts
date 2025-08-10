@@ -1,9 +1,22 @@
-import { render } from "@react-email/components";
+import { render } from "@react-email/render";
 import * as React from "react";
 
-export async function renderEmail(Comp: React.FC<any>, props: any) {
+export type EmailRenderProps = Record<string, unknown>;
+
+export async function renderEmail<TProps extends EmailRenderProps>(
+  Comp: React.ComponentType<TProps>,
+  props: TProps
+): Promise<{ html: string; text: string }> {
   const element = React.createElement(Comp, props);
-  const html = await render(element, { pretty: true }); // Await because render returns Promise<string>
-  const text = await render(element, { plainText: true }); // Await because render returns Promise<string>
+
+  // Newer versions of @react-email/render return a Promise<string>
+  const html: string = await render(element);
+
+  const text: string = html
+    .replace(/<style[\s\S]*?<\/style>/gi, "")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
   return { html, text };
 }

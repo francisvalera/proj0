@@ -1,17 +1,16 @@
 import { Html, Body, Container, Text, Hr } from "@react-email/components";
-export default function OrderConfirmation({ order }: any) {
-  const currency = (n: number) => `₱${Number(n).toLocaleString()}`;
-  const shipping = order.shippingAddress || {};
-  const storeName = getStoreName();
-
+import type { OrderEmail } from "./_types";
 
 function getStoreName() {
-  // Prefer NEXT_PUBLIC_STORE_NAME; fallback to the display name in EMAIL_FROM or a default string
   const from = process.env.EMAIL_FROM || "Kuya Kards Motorcycle Trading <no-reply@example.com>";
   const display = from.includes("<") ? from.split("<")[0].trim() : from;
   return process.env.NEXT_PUBLIC_STORE_NAME || display || "Kuya Kards Motorcycle Trading";
 }
 
+export default function OrderConfirmation({ order }: { order: OrderEmail }) {
+  const currency = (n: number) => `₱${Number(n).toLocaleString()}`;
+  const shipping = order.shippingAddress || {};
+  const storeName = getStoreName();
 
   return (
     <Html>
@@ -28,8 +27,8 @@ function getStoreName() {
               </tr>
             </thead>
             <tbody>
-              {order.items?.map((i: any, idx: number) => (
-                <tr key={idx}>
+              {order.items?.map((i) => (
+                <tr key={`${i.productId}`}>
                   <td style={{ borderBottom: "1px solid #f3f4f6" }}>{i.productName || i.productId} (×{i.quantity})</td>
                   <td align="right" style={{ borderBottom: "1px solid #f3f4f6" }}>{currency(i.price)}</td>
                 </tr>
@@ -46,10 +45,10 @@ function getStoreName() {
           <Text style={{ fontSize: 16, fontWeight: 700, marginTop: 16 }}>Shipping Information</Text>
           <Text style={{ marginTop: 0 }}>
             {order.customerName}<br />
-            {shipping.street}<br />
-            {shipping.barangay}<br />
-            {shipping.city}, {shipping.province}<br />
-            {order.customerPhone}<br />
+            {shipping?.street || ""}<br />
+            {shipping?.barangay || ""}<br />
+            {shipping?.city || ""}{shipping?.province ? `, ${shipping.province}` : ""}<br />
+            {order.customerPhone || ""}<br />
             {order.customerEmail}
           </Text>
 
