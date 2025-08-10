@@ -23,12 +23,9 @@ export default async function OrderConfirmationPage(
             We are processing your order and will send updates to the contact details you provided.
           </p>
           <div className="mt-6">
-            <Link
-              href="/"
-              className="text-base font-medium text-red-600 hover:text-red-500"
-            >
-              Continue Shopping<span aria-hidden="true"> &rarr;</span>
-            </Link>
+            <Link href="/" className="inline-flex items-center rounded-lg bg-red-600 px-6 py-3 font-semibold text-white hover:bg-red-700">
+          Continue Shopping →
+        </Link>
           </div>
         </div>
       </div>

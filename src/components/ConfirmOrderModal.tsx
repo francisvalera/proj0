@@ -1,95 +1,76 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import LoadingSpinner from "@/components/LoadingSpinner";
 
-interface ConfirmOrderModalProps {
+export interface ConfirmOrderModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: () => Promise<void> | void; // allow async handling
+  onConfirm: () => Promise<void> | void;
+  summary: {
+    items: Array<{ id: string; name: string; quantity: number; price: number; imageUrl?: string }>;
+    total: number;
+    count: number;
+  };
 }
 
-export default function ConfirmOrderModal({
-  isOpen,
-  onClose,
-  onConfirm,
-}: ConfirmOrderModalProps) {
+export default function ConfirmOrderModal({ isOpen, onClose, onConfirm, summary }: ConfirmOrderModalProps) {
   const [isLoading, setIsLoading] = useState(false);
 
-  if (!isOpen) return null;
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape" && !isLoading) onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [isOpen, isLoading, onClose]);
 
-  const handleConfirm = async () => {
+  const handleConfirm = useCallback(async () => {
     try {
       setIsLoading(true);
-      await onConfirm(); // run the process
+      await onConfirm();
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [onConfirm]);
+
+  if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
-      <div className="bg-white p-8 rounded-lg shadow-xl max-w-sm w-full">
-        <h2 className="text-xl font-bold mb-4">Confirm Your Order</h2>
-        <p className="text-gray-600 mb-6">
-          Are you sure you want to place this order?
-        </p>
-        <div className="flex justify-end space-x-4">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 rounded-md text-gray-700 bg-gray-200 hover:bg-gray-300"
-            disabled={isLoading}
-          >
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" aria-modal role="dialog" aria-labelledby="confirm-order-title">
+      <div className="w-full max-w-lg rounded-xl bg-white p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <h2 id="confirm-order-title" className="mb-4 text-xl font-bold">Confirm Your Order</h2>
+
+        {/* Order preview (compact) */}
+        <div className="mb-4 overflow-hidden rounded-lg border">
+          <div className="grid grid-cols-6 bg-gray-50 px-3 py-2 text-sm font-semibold">
+            <div className="col-span-4">Product</div>
+            <div className="col-span-1 text-right">Qty</div>
+            <div className="col-span-1 text-right">Total</div>
+          </div>
+          <ul className="divide-y">
+            {summary.items.map((it) => (
+              <li key={it.id} className="grid grid-cols-6 px-3 py-2 text-sm">
+                <div className="col-span-4 truncate">{it.name}</div>
+                <div className="col-span-1 text-right">{it.quantity}</div>
+                <div className="col-span-1 text-right">₱{(it.price * it.quantity).toLocaleString()}</div>
+              </li>
+            ))}
+          </ul>
+          <div className="grid grid-cols-6 bg-gray-50 px-3 py-2 text-sm">
+            <div className="col-span-5 text-right font-bold">Total:</div>
+            <div className="col-span-1 text-right font-bold">₱{Number(summary.total).toLocaleString()}</div>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-end gap-2">
+          <button type="button" onClick={onClose} disabled={isLoading} className="rounded-md bg-gray-200 px-4 py-2 text-sm text-gray-800 hover:bg-gray-300 disabled:cursor-not-allowed disabled:opacity-70">
             Cancel
           </button>
-          <button
-            onClick={handleConfirm}
-            disabled={isLoading}
-            className={`px-4 py-2 rounded-md text-white bg-red-600 hover:bg-red-700 flex items-center justify-center min-w-[90px] ${
-              isLoading ? "opacity-80 cursor-not-allowed" : ""
-            }`}
-          >
-            {isLoading ? <LoadingSpinner /> : "Proceed"}
+          <button type="button" onClick={handleConfirm} disabled={isLoading} className="min-w-[108px] rounded-md bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-80">
+            {isLoading ? <LoadingSpinner /> : "Place Order"}
           </button>
         </div>
       </div>
     </div>
   );
 }
-
-
-// "use client";
-
-// interface ConfirmOrderModalProps {
-//   isOpen: boolean;
-//   onClose: () => void;
-//   onConfirm: () => void;
-// }
-
-// export default function ConfirmOrderModal({ isOpen, onClose, onConfirm }: ConfirmOrderModalProps) {
-//   if (!isOpen) return null;
-
-//   return (
-//     // Corrected: Used bg-black/50 for transparency and added a backdrop blur for a nicer effect.
-//     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
-//       <div className="bg-white p-8 rounded-lg shadow-xl max-w-sm w-full">
-//         <h2 className="text-xl font-bold mb-4">Confirm Your Order</h2>
-//         <p className="text-gray-600 mb-6">Are you sure you want to place this order?</p>
-//         <div className="flex justify-end space-x-4">
-//           <button
-//             onClick={onClose}
-//             className="px-4 py-2 rounded-md text-gray-700 bg-gray-200 hover:bg-gray-300"
-//           >
-//             Cancel
-//           </button>
-//           <button
-//             onClick={onConfirm}
-//             className="px-4 py-2 rounded-md text-white bg-red-600 hover:bg-red-700"
-//           >
-//             Proceed
-//           </button>
-//         </div>
-//       </div>
-//     </div>
-//   );
-// }
