@@ -1,18 +1,21 @@
-// Server Component (no client hooks) — avoids Suspense requirement
+// Server Component (no client hooks) — Vercel friendly
 export const dynamic = "force-dynamic";
 
 import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/authOptions";
 
+type SP = { from?: string };
+
 export default async function ForbiddenPage({
   searchParams,
 }: {
-  searchParams: { from?: string };
+  // Next 15 can pass searchParams as a Promise
+  searchParams: Promise<SP>;
 }) {
+  const { from = "/admin" } = await searchParams;
   const session = await getServerSession(authOptions);
   const name = session?.user?.name ?? "there";
-  const from = searchParams?.from || "/admin";
 
   return (
     <main className="min-h-[70vh] grid place-items-center bg-[#F6F8FB] px-6">
@@ -40,7 +43,7 @@ export default async function ForbiddenPage({
           </Link>
         </div>
 
-        {/* Optional: plain signout link if you want it visible */}
+        {/* Simple sign-out link (no client hook) */}
         {session?.user && (
           <div className="mt-3 text-xs text-slate-500">
             <Link href="/api/auth/signout?callbackUrl=/">Not you? Sign out</Link>
