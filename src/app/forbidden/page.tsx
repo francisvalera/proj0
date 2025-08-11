@@ -1,16 +1,18 @@
-// /src/app/forbidden/page.tsx
-"use client";
+// Server Component (no client hooks) — avoids Suspense requirement
+export const dynamic = "force-dynamic";
 
 import Link from "next/link";
-import Image from "next/image";
-import { useSearchParams } from "next/navigation";
-import { useSession, signOut } from "next-auth/react";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/authOptions";
 
-export default function ForbiddenPage() {
-  const { data } = useSession();
-  const sp = useSearchParams();
-  const from = sp.get("from") || "/admin";
-  const name = data?.user?.name ?? "there";
+export default async function ForbiddenPage({
+  searchParams,
+}: {
+  searchParams: { from?: string };
+}) {
+  const session = await getServerSession(authOptions);
+  const name = session?.user?.name ?? "there";
+  const from = searchParams?.from || "/admin";
 
   return (
     <main className="min-h-[70vh] grid place-items-center bg-[#F6F8FB] px-6">
@@ -38,13 +40,11 @@ export default function ForbiddenPage() {
           </Link>
         </div>
 
-        {data?.user && (
-          <button
-            onClick={() => signOut({ callbackUrl: "/" })}
-            className="mt-3 text-xs text-slate-500 hover:underline"
-          >
-            Not you? Sign out and switch accounts
-          </button>
+        {/* Optional: plain signout link if you want it visible */}
+        {session?.user && (
+          <div className="mt-3 text-xs text-slate-500">
+            <Link href="/api/auth/signout?callbackUrl=/">Not you? Sign out</Link>
+          </div>
         )}
       </div>
     </main>
