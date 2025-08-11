@@ -1,20 +1,41 @@
-import AppSidebar from "@/layout/AppSidebar";
-import AppHeader from "@/layout/AppHeader";
+export const dynamic = "force-dynamic";
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
+import Sidebar from "./_components/Sidebar";
+import { requireAdmin } from "@/lib/requireAdmin";
+
+export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+  await requireAdmin("/admin");
+
   return (
-    <div className="min-h-screen bg-[#F6F8FB] text-slate-900">
-      {/* fixed sidebar */}
-      <AppSidebar />
-
-      {/* content area (full width opposite the sidebar) */}
-      <div className="lg:ml-[290px]">
-        <AppHeader />
-        <div className="p-4 md:p-6 lg:p-8 w-full">{children}</div>
+    <div className="min-h-screen bg-[#F6F8FB]">
+      <div className="flex">
+        <Sidebar />
+        <main className="flex-1 min-h-screen">
+          <div className="mx-auto max-w-7xl p-4 md:p-6 lg:p-8">{children}</div>
+        </main>
       </div>
     </div>
   );
 }
+
+
+// import AppSidebar from "@/layout/AppSidebar";
+// import AppHeader from "@/layout/AppHeader";
+
+// export default function AdminLayout({ children }: { children: React.ReactNode }) {
+//   return (
+//     <div className="min-h-screen bg-[#F6F8FB] text-slate-900">
+//       {/* fixed sidebar */}
+//       <AppSidebar />
+
+//       {/* content area (full width opposite the sidebar) */}
+//       <div className="lg:ml-[290px]">
+//         <AppHeader />
+//         <div className="p-4 md:p-6 lg:p-8 w-full">{children}</div>
+//       </div>
+//     </div>
+//   );
+// }
 
 
 // import { SidebarProvider } from "@/context/SidebarContext";
