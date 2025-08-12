@@ -15,9 +15,17 @@ type Props = { products: ProductWithImages[] };
 type SortKey = "name" | "brandName" | "price" | "stock" | "createdAt";
 type SortDir = "asc" | "desc";
 
-function formatPHP(n: unknown) {
-  const num =
-    typeof n === "number" ? n : Number((n as any)?.toString?.() ?? Number.NaN);
+/** Accepts numbers, strings, or Prisma Decimal-like with toNumber() */
+type NumericLike = number | string | { toNumber: () => number };
+
+function toNum(n: NumericLike): number {
+  if (typeof n === "number") return n;
+  if (typeof n === "string") return Number(n);
+  return n.toNumber();
+}
+
+function formatPHP(n: NumericLike) {
+  const num = toNum(n);
   return Number.isFinite(num)
     ? num.toLocaleString("en-PH", { style: "currency", currency: "PHP" })
     : String(n ?? "");
@@ -48,16 +56,17 @@ export default function ProductsTable({ products }: Props) {
         sortKey === "createdAt"
           ? +new Date(a.createdAt)
           : sortKey === "price"
-          ? Number((a as any).price?.toString?.() ?? 0)
-          : (a as any)[sortKey] ?? "";
+          ? toNum(a.price as unknown as NumericLike)
+          : (a[sortKey] as unknown as number | string);
       const B =
         sortKey === "createdAt"
           ? +new Date(b.createdAt)
           : sortKey === "price"
-          ? Number((b as any).price?.toString?.() ?? 0)
-          : (b as any)[sortKey] ?? "";
-      if (A < B) return sortDir === "asc" ? -1 : 1;
-      if (A > B) return sortDir === "asc" ? 1 : -1;
+          ? toNum(b.price as unknown as NumericLike)
+          : (b[sortKey] as unknown as number | string);
+
+      if (A < (B as number | string)) return sortDir === "asc" ? -1 : 1;
+      if (A > (B as number | string)) return sortDir === "asc" ? 1 : -1;
       return 0;
     });
     return arr;
@@ -78,7 +87,6 @@ export default function ProductsTable({ products }: Props) {
 
   return (
     <div className="rounded-sm border border-transparent bg-white p-6 shadow-default dark:border-transparent dark:bg-boxdark">
-      {/* softer separators & exact type scale */}
       <div className="rounded-xl border border-[#ECEFF4] bg-white p-5 text-[14px] leading-5 font-[300] dark:border-strokedark dark:bg-boxdark">
         {/* Controls */}
         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -104,7 +112,6 @@ export default function ProductsTable({ products }: Props) {
               }}
               placeholder="Search..."
             />
-            {/* New Product button beside the search box */}
             <div className="shrink-0">
               <NewProductForm />
             </div>
@@ -164,7 +171,7 @@ export default function ProductsTable({ products }: Props) {
                       day: "2-digit",
                     })}
                   </td>
-                  <td className="px-5 py-5 text-right">{formatPHP((p as any).price)}</td>
+                  <td className="px-5 py-5 text-right">{formatPHP(p.price as unknown as NumericLike)}</td>
                   <td className="px-5 py-5 text-right">{p.images?.length ?? 0}</td>
                   <td className="px-5 py-5">
                     <div className="flex justify-end gap-2">
@@ -192,7 +199,6 @@ export default function ProductsTable({ products }: Props) {
                   </td>
                 </tr>
               ))}
-
               {pageItems.length === 0 && (
                 <tr>
                   <td colSpan={7} className="px-5 py-10 text-center text-gray-500">
@@ -217,7 +223,6 @@ export default function ProductsTable({ products }: Props) {
               </>
             )}
           </div>
-
           <div className="inline-flex items-center gap-2">
             <button
               className="rounded-lg border border-[#E5EAF1] px-3 py-2 text-sm disabled:opacity-50 dark:border-strokedark"

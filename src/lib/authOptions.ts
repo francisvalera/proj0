@@ -1,94 +1,72 @@
-// src/lib/authOptions.ts
-import type { Adapter } from "next-auth/adapters";
-import type { NextAuthOptions } from "next-auth";
+import type { NextAuthOptions, User } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@auth/prisma-adapter";
+import type { Adapter } from "next-auth/adapters";
 import prisma from "@/lib/prisma";
-import bcrypt from "bcrypt";
+import { compare } from "bcryptjs";
+
+type Role = "USER" | "ADMIN";
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma) as Adapter,
   session: { strategy: "jwt" },
-  pages: {
-    signIn: "/login",
-    error: "/auth/error",
-  },
+  pages: { signIn: "/login" },
+
   providers: [
     Credentials({
-      id: "credentials",
       name: "Credentials",
       credentials: {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
       },
-      // IMPORTANT: Adjust field names to match your Prisma User model
-      // Assumes User has: id, email, password (hashed), role
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) return null;
+        const email = credentials?.email?.trim() ?? "";
+        const password = credentials?.password ?? "";
+        if (!email || !password) return null;
 
-        const user = await prisma.user.findUnique({
-          where: { email: credentials.email },
+        const dbUser = await prisma.user.findUnique({
+          where: { email },
+          select: { id: true, name: true, email: true, image: true, password: true, role: true },
         });
-        if (!user) return null;
+        if (!dbUser || !dbUser.password) return null;
 
-        const stored = (user as any).password as string | undefined;
+        const ok = await compare(password, dbUser.password);
+        if (!ok) return null;
 
-        // If you store bcrypt hashes (recommended)
-        if (stored && stored.startsWith("$2")) {
-          const ok = await bcrypt.compare(credentials.password, stored);
-          if (!ok) return null;
-        } else {
-          // Fallback: plaintext dev-only (remove in prod)
-          if (stored && stored !== credentials.password) return null;
-        }
-
-        // Return the minimal user shape for the JWT
-        return {
-          id: user.id,
-          email: user.email!,
-          name: user.name ?? undefined,
-          role: (user as any).role ?? "USER",
-        } as any;
+        // Return only the standard NextAuth User shape here;
+        // we’ll fetch role in the JWT callback.
+        const baseUser: User = {
+          id: dbUser.id,
+          name: dbUser.name,
+          email: dbUser.email,
+          image: dbUser.image ?? null,
+        };
+        return baseUser;
       },
     }),
   ],
+
   callbacks: {
     async jwt({ token, user }) {
-      if (user) {
-        token.id = (user as any).id;
-        token.role = (user as any).role ?? token.role ?? "USER";
+      // On first sign-in, load role from DB and store on token
+      if (user?.id) {
+        const dbUser = await prisma.user.findUnique({
+          where: { id: user.id },
+          select: { role: true },
+        });
+        if (dbUser?.role) {
+          (token as { role?: Role }).role = dbUser.role as Role;
+        }
       }
       return token;
     },
     async session({ session, token }) {
       if (session.user) {
-        session.user.id = (token.id as string) ?? "";
-        if (token.role) session.user.role = token.role as "USER" | "ADMIN";
+        session.user.id = token.sub ?? "";
+        const r = (token as { role?: Role }).role;
+        if (r) session.user.role = r;
       }
       return session;
     },
   },
-  debug: process.env.NODE_ENV === "development",
 };
-
-
-// export const authOptions: NextAuthOptions = {
-//   adapter: PrismaAdapter(prisma),
-//   session: { strategy: "jwt" },
-//   callbacks: {
-//     async jwt({ token, user }) {
-//       if (user) {
-//         token.id = (user as any).id;
-//         token.role = ((user as any).role ?? "USER") as "USER" | "ADMIN";
-//       }
-//       return token;
-//     },
-//     async session({ session, token }) {
-//       if (session.user) {
-//         session.user.id = (token.id as string) ?? "";
-//         session.user.role = (token.role as "USER" | "ADMIN") ?? "USER";
-//       }
-//       return session;
-//     },
-//   },
-// };
