@@ -1,12 +1,16 @@
-import PageBreadcrumb from "@/components/common/PageBreadcrumb";
-import ProductsTableCard from "../_components/ProductsTableCard";
-import { products } from "@/lib/admin/mock";
+import { unstable_noStore as noStore } from "next/cache";
+import prisma from "@/lib/prisma";
+import { requireAdmin } from "@/lib/requireAdmin";
+import ProductsTable from "./_components/ProductsTable";
 
-export default function ProductsPage() {
-  return (
-    <div className="space-y-6">
-      <PageBreadcrumb pageTitle="Products" />
-      <ProductsTableCard products={products} />
-    </div>
-  );
+export default async function ProductsPage() {
+  noStore();
+  await requireAdmin("/admin/products");
+
+  const products = await prisma.product.findMany({
+    orderBy: { createdAt: "desc" },
+    include: { images: true, primaryImage: true },
+  });
+
+  return <ProductsTable products={products} />;
 }

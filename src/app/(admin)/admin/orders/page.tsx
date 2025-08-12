@@ -1,12 +1,21 @@
-import PageBreadcrumb from "@/components/common/PageBreadcrumb";
-import OrdersTableCard from "../_components/OrdersTableCard";
-import { orders } from "@/lib/admin/mock";
+import { unstable_noStore as noStore } from "next/cache";
+import prisma from "@/lib/prisma";
+import { requireAdmin } from "@/lib/requireAdmin";
 
-export default function OrdersPage() {
+export default async function OrdersPage() {
+  noStore();
+  await requireAdmin("/admin/orders");
+
+  const orders = await prisma.order.findMany({
+    orderBy: { createdAt: "desc" },
+    include: { items: true, user: true },
+  });
+
+  // Render your orders table/list here; no H1
   return (
-    <div className="space-y-6">
-      <PageBreadcrumb pageTitle="Orders" />
-      <OrdersTableCard orders={orders} />
+    <div className="rounded-xl border border-[#ECEFF4] bg-white p-5 shadow-default dark:border-strokedark dark:bg-boxdark">
+      {/* TODO: orders table component */}
+      <div className="text-sm text-gray-500">Orders: {orders.length}</div>
     </div>
   );
 }

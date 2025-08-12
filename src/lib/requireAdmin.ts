@@ -1,16 +1,9 @@
-import "server-only";
 import { getServerSession } from "next-auth";
-import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/authOptions";
+import { redirect } from "next/navigation";
 
-export async function requireAdmin(callbackUrl = "/admin") {
+export async function requireAdmin(returnTo = "/admin") {
   const session = await getServerSession(authOptions);
-
-  if (!session) {
-    redirect(`/login?callbackUrl=${encodeURIComponent(callbackUrl)}`);
-  }
-  if (session.user?.role !== "ADMIN") {
-    redirect(`/forbidden?from=${encodeURIComponent(callbackUrl)}`);
-  }
-  return session;
+  if (!session?.user) redirect(`/login?callbackUrl=${encodeURIComponent(returnTo)}`);
+  if (session.user.role !== "ADMIN") redirect(`/forbidden?from=${encodeURIComponent(returnTo)}`);
 }

@@ -13,7 +13,7 @@ export default function AdminDashboard() {
   const activeProducts = products.filter(p => p.status === "ACTIVE").length;
 
   return (
-    <div className="space-y-6">
+    <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
       <PageBreadcrumb pageTitle="Dashboard" />
       <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard label="Total sales" value={currency(totalSales)} hint="Paid + Shipped" />

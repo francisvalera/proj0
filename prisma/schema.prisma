@@ -27,7 +27,7 @@ model Order {
   shippingAddress Json // Store the full address object
   items           OrderItem[]
   createdAt       DateTime    @default(now())
-  userId          String?     // Optional: link to a registered user
+  userId          String? // Optional: link to a registered user
   user            User?       @relation(fields: [userId], references: [id])
 }
 
@@ -41,31 +41,45 @@ model OrderItem {
   product   Product @relation(fields: [productId], references: [id])
 }
 
-
 // --- EXISTING MODELS ---
 
 model Product {
-  id          String    @id @default(cuid())
-  name        String
-  price       Float
-  brandName   String
-  isFeatured  Boolean   @default(false)
-  stock       Int       @default(0)
-  imageUrl    String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  orderItems  OrderItem[]
+  id             String         @id @default(cuid())
+  name           String
+  price          Float
+  brandName      String
+  isFeatured     Boolean        @default(false)
+  stock          Int            @default(0)
+  primaryImageId String?        @unique
+  primaryImage   ProductImage?  @relation("PrimaryProductImage", fields: [primaryImageId], references: [id])
+  images         ProductImage[] @relation("ProductImages")
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  orderItems     OrderItem[]
+}
+
+model ProductImage {
+  id         String   @id @default(cuid())
+  productId  String
+  product    Product  @relation("ProductImages", fields: [productId], references: [id])
+  primaryFor Product? @relation("PrimaryProductImage")
+  url        String
+  alt        String?
+  sortOrder  Int      @default(0)
+  createdAt  DateTime @default(now())
+
+  @@index([productId])
 }
 
 model Blog {
-  id          String    @id @default(cuid())
-  title       String
-  excerpt     String
-  date        String
-  category    String
-  imageUrl    String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id        String   @id @default(cuid())
+  title     String
+  excerpt   String
+  date      String
+  category  String
+  imageUrl  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 enum UserRole {
@@ -87,19 +101,19 @@ model User {
 }
 
 model Account {
-  id                 String  @id @default(cuid())
-  userId             String
-  type               String
-  provider           String
-  providerAccountId  String
-  refresh_token      String?  @db.Text
-  access_token       String?  @db.Text
-  expires_at         Int?
-  token_type         String?
-  scope              String?
-  id_token           String?  @db.Text
-  session_state      String?
-  user               User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
 }

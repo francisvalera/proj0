@@ -2,33 +2,39 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { LayoutDashboard, PackageSearch, ShoppingBasket } from "lucide-react";
 
-type NavItem = { href: string; label: string };
+type NavItem = { href: string; label: string; icon: React.ElementType };
 const NAV: NavItem[] = [
-  { href: "/admin", label: "Dashboard" },
-  { href: "/admin/products", label: "Products" },
-  { href: "/admin/orders", label: "Orders" },
+  { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/admin/products", label: "Products", icon: PackageSearch },
+  { href: "/admin/orders", label: "Orders", icon: ShoppingBasket },
 ];
 
 export default function Sidebar() {
   const pathname = usePathname();
+
   return (
-    <aside className="hidden lg:flex w-64 flex-col border-r bg-white">
-      <div className="h-16 flex items-center px-4 border-b">
-        <span className="font-semibold tracking-tight">Admin</span>
+    <aside className="hidden w-64 flex-col border-r border-stroke bg-white dark:border-strokedark dark:bg-boxdark lg:flex">
+      <div className="flex h-16 items-center border-b border-stroke px-6 dark:border-strokedark">
+        <span className="font-semibold tracking-tight text-black dark:text-white">Admin</span>
       </div>
+
       <nav className="p-3 space-y-1">
-        {NAV.map((item) => {
-          const active = pathname === item.href;
+        {NAV.map(({ href, label, icon: Icon }) => {
+          const active = pathname === href || pathname.startsWith(href + "/");
           return (
             <Link
-              key={item.href}
-              href={item.href}
-              className={`block rounded-lg px-3 py-2 text-sm ${
-                active ? "bg-neutral-100 font-medium" : "hover:bg-neutral-50"
-              }`}
+              key={href}
+              href={href}
+              className={`flex items-center gap-3 rounded-md px-4 py-2.5 text-sm transition
+                ${active
+                  ? "bg-gray-2 font-medium text-black dark:text-white"
+                  : "text-gray-600 hover:bg-gray-2 dark:text-gray-300"}
+              `}
             >
-              {item.label}
+              <Icon className="h-4 w-4" />
+              <span>{label}</span>
             </Link>
           );
         })}

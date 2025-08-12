@@ -4,6 +4,22 @@ import { useCart } from "@/context/CartContext";
 import Link from "next/link";
 import { Minus, Plus, Trash2 } from "lucide-react";
 
+type CartItemShape = {
+  productId: string;
+  name: string;
+  price: number | string;
+  quantity: number;
+  imageUrl?: string;
+};
+
+function getCartItemImageUrl(item: unknown) {
+  const anyItem = item as Partial<CartItemShape> | undefined;
+  const url = typeof anyItem?.imageUrl === "string" && anyItem.imageUrl.length > 0
+    ? anyItem.imageUrl
+    : "/images/kklogo.jfif";
+  return url;
+}
+
 export default function CartPage() {
   const { cartItems, updateQuantity, removeFromCart, cartCount } = useCart();
 
@@ -31,7 +47,12 @@ export default function CartPage() {
                 {cartItems.map((product) => (
                   <li key={product.id} className="flex py-6">
                     <div className="h-24 w-24 flex-shrink-0 overflow-hidden rounded-md border border-gray-200">
-                      <img src={product.imageUrl || "/images/kklogo.jfif"} alt={product.name} className="h-full w-full object-cover object-center" />
+                      {/* <img src={product.imageUrl || "/images/kklogo.jfif"} alt={product.name} className="h-full w-full object-cover object-center" /> */}
+                      <img
+                        src={getCartItemImageUrl(product)}
+                        alt={product.name}
+                        className="h-full w-full object-cover object-center"
+                      />
                     </div>
                     <div className="ml-4 flex flex-1 flex-col">
                       <div>

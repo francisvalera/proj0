@@ -3,16 +3,32 @@
 import React from "react";
 import Link from "next/link";
 import { Star } from "lucide-react";
-import type { Product } from "@prisma/client";
+import type { Product, ProductImage } from "@prisma/client";
 import { useCart } from "@/context/CartContext";
 
 interface ProductCardProps {
   product: Product;
 }
 
-export default function ProductCard({ product }: ProductCardProps) {
+type ProductWithImages = Product & {
+  primaryImage?: ProductImage | null;
+  images?: ProductImage[];
+};
+
+const placeholderImage = "/images/kklogo.jfif";
+
+type Props = { product: ProductWithImages };
+
+export default function ProductCard({ product }: Props) {
+  const img =
+    product.primaryImage?.url ??
+    product.images?.[0]?.url ??
+    placeholderImage;
+
+
+
   const { addToCart } = useCart();
-  const placeholderImage = "/images/kklogo.jfif";
+  
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault(); // Prevent navigating to the product page
@@ -28,9 +44,9 @@ export default function ProductCard({ product }: ProductCardProps) {
       <Link href={`/products/${product.id}`} className="block">
         <div className="relative aspect-square overflow-hidden bg-gray-50">
           <img
-            src={product.imageUrl || placeholderImage}
+            src={img}
             alt={product.name}
-            className="product-image w-full h-full object-cover"
+            className="h-full w-full object-cover transition group-hover:scale-105"
           />
           {/* ... badges ... */}
         </div>

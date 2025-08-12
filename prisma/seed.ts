@@ -14,14 +14,35 @@ async function main() {
   
   const defaultImage = "/images/kklogo.jfif";
 
-  await prisma.product.createMany({
-    data: [
-      { name: "High-Performance Piston Kit", price: 2500, brandName: "Brand A", isFeatured: true, stock: 15, imageUrl: defaultImage },
-      { name: "Racing Brake Caliper Set", price: 3800, brandName: "Brand B", isFeatured: true, stock: 8, imageUrl: defaultImage },
-      { name: "Titanium Full Exhaust System", price: 7950, brandName: "Brand C", isFeatured: true, stock: 5, imageUrl: defaultImage },
-      { name: "Custom CNC Side Mirrors", price: 1200, brandName: "Brand D", isFeatured: true, stock: 20, imageUrl: defaultImage },
-    ],
-  });
+  // await prisma.product.createMany({
+  //   data: [
+  //     { name: "High-Performance Piston Kit", price: 2500, brandName: "Brand A", isFeatured: true, stock: 15, imageUrl: defaultImage },
+  //     { name: "Racing Brake Caliper Set", price: 3800, brandName: "Brand B", isFeatured: true, stock: 8, imageUrl: defaultImage },
+  //     { name: "Titanium Full Exhaust System", price: 7950, brandName: "Brand C", isFeatured: true, stock: 5, imageUrl: defaultImage },
+  //     { name: "Custom CNC Side Mirrors", price: 1200, brandName: "Brand D", isFeatured: true, stock: 20, imageUrl: defaultImage },
+  //   ],
+  // });
+  const products = [
+    { name: "High-Performance Piston Kit", price: 2500, brandName: "Brand A", isFeatured: true, stock: 15 },
+    { name: "Racing Brake Caliper Set",    price: 3800, brandName: "Brand B", isFeatured: true, stock: 8  },
+    { name: "Titanium Full Exhaust System", price: 7950, brandName: "Brand C", isFeatured: true, stock: 5  },
+    { name: "Custom CNC Side Mirrors",      price: 1200, brandName: "Brand D", isFeatured: true, stock: 20 },
+  ];
+
+  for (const p of products) {
+    await prisma.$transaction(async (tx) => {
+      const created = await tx.product.create({ data: p });
+
+      const img = await tx.productImage.create({
+        data: { productId: created.id, url: defaultImage, sortOrder: 0 },
+      });
+
+      await tx.product.update({
+        where: { id: created.id },
+        data: { primaryImageId: img.id },
+      });
+    });
+  }
   console.log('Products created.');
 
   await prisma.blog.createMany({
