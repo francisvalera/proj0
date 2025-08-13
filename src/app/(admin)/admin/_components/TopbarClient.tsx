@@ -58,7 +58,7 @@ export default function TopbarClient({ user }: Props) {
           ) : (
             <span className="text-sm font-medium text-gray-700">{initials}</span>
           )}
-          <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-boxdark" />
+          {/* <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-boxdark" /> */}
         </span>
         <span className="hidden md:block text-sm font-medium text-black dark:text-white">
           {user?.name ?? "Admin"}

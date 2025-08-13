@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -9,8 +6,6 @@ datasource db {
   provider = "postgresql"
   url      = env("POSTGRES_URL")
 }
-
-// --- NEW MODELS FOR ORDERS AND SETTINGS ---
 
 model Settings {
   id         String @id @default(cuid())
@@ -41,22 +36,32 @@ model OrderItem {
   product   Product @relation(fields: [productId], references: [id])
 }
 
-// --- EXISTING MODELS ---
-
 model Product {
-  id             String         @id @default(cuid())
-  name           String
-  price          Float
-  brandName      String
-  isFeatured     Boolean        @default(false)
-  isActive       Boolean        @default(true)
-  stock          Int            @default(0)
+  id         String  @id @default(cuid())
+  name       String
+  price      Float
+  brandName  String
+  isFeatured Boolean @default(false)
+  isActive   Boolean @default(true)
+  stock      Int     @default(0)
+
+  model String? // e.g. vehicle/model code
+  size  String? // e.g. S / M / L or dimensions
+  sku   String? // keep non-unique for now
+
   primaryImageId String?        @unique
   primaryImage   ProductImage?  @relation("PrimaryProductImage", fields: [primaryImageId], references: [id])
   images         ProductImage[] @relation("ProductImages")
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
-  orderItems     OrderItem[]
+
+  // Normalized taxonomy: point to Subcategory (Category comes via Subcategory.category)
+  subcategoryId String?
+  subcategory   Subcategory? @relation(fields: [subcategoryId], references: [id])
+
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  orderItems OrderItem[]
+  Brand      Brand?      @relation(fields: [brandId], references: [id])
+  brandId    String?
 }
 
 model ProductImage {
@@ -70,6 +75,32 @@ model ProductImage {
   createdAt  DateTime @default(now())
 
   @@index([productId])
+}
+
+model Category {
+  id            String        @id @default(cuid())
+  name          String        @unique
+  subcategories Subcategory[]
+}
+
+model Subcategory {
+  id         String   @id @default(cuid())
+  name       String
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id])
+
+  // one-to-many side for Products once FK is in place
+  products Product[]
+
+  @@unique([categoryId, name], name: "categoryId_name")
+}
+
+model Brand {
+  id        String    @id @default(cuid())
+  name      String    @unique
+  products  Product[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 }
 
 model Blog {

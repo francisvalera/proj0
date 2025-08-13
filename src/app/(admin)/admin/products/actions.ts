@@ -1,172 +1,195 @@
-// src/app/(admin)/admin/products/actions.ts
 "use server";
 
-import type { Session } from "next-auth";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/authOptions";
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
-import { uploadImage } from "@/lib/uploads";
-import { productCreateSchema, productUpdateSchema } from "@/lib/validators/product";
 
-function isAdmin(session: Session | null): session is Session & { user: { role: "ADMIN" } } {
-  return Boolean(session?.user && session.user.role === "ADMIN");
+type Role = "USER" | "ADMIN";
+
+type ActionResult =
+  | { ok: true }
+  | {
+      ok: false;
+      reason:
+        | "UNAUTHORIZED"
+        | "NOT_FOUND"
+        | "HAS_ORDERS"
+        | "INVALID_INPUT"
+        | "INTERNAL_ERROR";
+    };
+
+async function requireAdminSession(): Promise<true | ActionResult> {
+  const session = await getServerSession(authOptions);
+  const role = session?.user?.role as Role | undefined;
+  if (!session || role !== "ADMIN") return { ok: false, reason: "UNAUTHORIZED" };
+  return true;
 }
 
-export async function createProduct(formData: FormData) {
-  const session = (await getServerSession(authOptions)) as Session | null;
-  if (!isAdmin(session)) throw new Error("Forbidden");
+/** ---- helpers ---- */
+function toPriceNumber(input: string): number {
+  // allow "1,234.56" or "1234.56"
+  const n = Number.parseFloat(input.replace(/,/g, ""));
+  if (!Number.isFinite(n)) return 0;
+  // round to 2dp to match @db.Decimal(10,2)
+  return Math.round(n * 100) / 100;
+}
 
-  const base = {
-    name: String(formData.get("name") ?? ""),
-    price: Number(formData.get("price") ?? 0),
-    brandName: String(formData.get("brandName") ?? ""),
-    stock: Number(formData.get("stock") ?? 0),
-    isFeatured: String(formData.get("isFeatured") ?? "") === "on",
-    primaryIndex: Number(formData.get("primaryIndex") ?? 0),
-  };
+/** ---------- CREATE PRODUCT (used by NewProductForm) ---------- **/
+export async function createProduct(formData: FormData): Promise<ActionResult> {
+  try {
+    const auth = await requireAdminSession();
+    if (auth !== true) return auth;
 
-  const parsed = productCreateSchema.safeParse(base);
-  if (!parsed.success) throw new Error(parsed.error.message);
+    const name = (formData.get("name") ?? "").toString().trim();
+    const brandName = (formData.get("brandName") ?? "").toString().trim();
+    const priceStr = (formData.get("price") ?? "").toString().trim();
+    const stockStr = (formData.get("stock") ?? "").toString().trim();
+    const isFeaturedRaw = formData.get("isFeatured");
+    const imagesRaw = formData.get("images");
 
-  const files: File[] = [];
-  for (const v of formData.getAll("images")) {
-    if (v instanceof File && v.size > 0) files.push(v);
+    if (!name || !priceStr) return { ok: false, reason: "INVALID_INPUT" };
+
+    const price = toPriceNumber(priceStr);
+    const stock = Number.isFinite(Number(stockStr)) ? Number(stockStr) : 0;
+    const isFeatured =
+      typeof isFeaturedRaw === "string"
+        ? isFeaturedRaw === "true" || isFeaturedRaw === "on" || isFeaturedRaw === "1"
+        : Boolean(isFeaturedRaw);
+
+    type IncomingImage = { url: string; isPrimary?: boolean; alt?: string | null };
+    const incomingImages: IncomingImage[] = (() => {
+      if (!imagesRaw) return [];
+      try {
+        const parsed = JSON.parse(imagesRaw.toString()) as unknown;
+        if (Array.isArray(parsed)) {
+          return parsed
+            .map((v) => {
+              if (v && typeof v === "object" && "url" in v && typeof (v as { url?: unknown }).url === "string") {
+                return {
+                  url: (v as { url: string }).url,
+                  isPrimary: Boolean((v as { isPrimary?: boolean }).isPrimary),
+                  alt: (v as { alt?: string | null }).alt ?? null,
+                } as IncomingImage;
+              }
+              return null;
+            })
+            .filter((x): x is IncomingImage => Boolean(x));
+        }
+        return [];
+      } catch {
+        return [];
+      }
+    })();
+
+    await prisma.$transaction(async (tx) => {
+      // 1) Create product
+      const created = await tx.product.create({
+        data: {
+          name,
+          brandName,
+          price, // number, per Prisma Client type (decimalNumber)
+          stock,
+          isFeatured,
+          isActive: true,
+        },
+        select: { id: true },
+      });
+
+      // 2) Optionally attach images, set primary
+      if (incomingImages.length > 0) {
+        let primaryId: string | null = null;
+
+        for (let i = 0; i < incomingImages.length; i++) {
+          const img = incomingImages[i];
+          const createdImg = await tx.productImage.create({
+            data: {
+              productId: created.id,
+              url: img.url,
+              alt: img.alt ?? null,
+              sortOrder: i,
+            },
+            select: { id: true },
+          });
+
+          if ((img.isPrimary ?? false) && !primaryId) {
+            primaryId = createdImg.id;
+          }
+          if (i === 0 && !primaryId) {
+            primaryId = createdImg.id;
+          }
+        }
+
+        if (primaryId) {
+          await tx.product.update({
+            where: { id: created.id },
+            data: { primaryImageId: primaryId },
+          });
+        }
+      }
+    });
+
+    revalidatePath("/admin/products");
+    return { ok: true };
+  } catch {
+    return { ok: false, reason: "INTERNAL_ERROR" };
   }
+}
 
-  const uploads = await Promise.all(files.map(uploadImage));
+/** ---------- SAFE DELETE (block if used in orders) ---------- **/
+export async function deleteProduct(productId: string): Promise<ActionResult> {
+  if (!productId) return { ok: false, reason: "INVALID_INPUT" };
+  const auth = await requireAdminSession();
+  if (auth !== true) return auth;
 
-  const created = await prisma.$transaction(async (tx) => {
-    const product = await tx.product.create({
-      data: {
-        name: parsed.data.name,
-        price: parsed.data.price,
-        brandName: parsed.data.brandName,
-        stock: parsed.data.stock,
-        isFeatured: parsed.data.isFeatured ?? false,
-      },
-    });
+  const usedCount = await prisma.orderItem.count({ where: { productId } });
+  if (usedCount > 0) return { ok: false, reason: "HAS_ORDERS" };
 
-    if (uploads.length === 0) return product;
+  await prisma.product.delete({ where: { id: productId } });
+  revalidatePath("/admin/products");
+  return { ok: true };
+}
 
-    const images = await Promise.all(
-      uploads.map((u, i) =>
-        tx.productImage.create({
-          data: { productId: product.id, url: u.url, sortOrder: i },
-        })
-      )
-    );
+/** ---------- TOGGLES ---------- **/
+export async function toggleProductActive(productId: string, value: boolean): Promise<ActionResult> {
+  if (!productId) return { ok: false, reason: "INVALID_INPUT" };
+  const auth = await requireAdminSession();
+  if (auth !== true) return auth;
 
-    const primaryIdx = parsed.data.primaryIndex ?? 0;
-    const primary = images[primaryIdx] ?? images[0];
+  await prisma.product.update({ where: { id: productId }, data: { isActive: value } });
+  revalidatePath("/admin/products");
+  return { ok: true };
+}
 
-    await tx.product.update({
-      where: { id: product.id },
-      data: { primaryImageId: primary.id },
-    });
+export async function toggleProductFeatured(productId: string, value: boolean): Promise<ActionResult> {
+  if (!productId) return { ok: false, reason: "INVALID_INPUT" };
+  const auth = await requireAdminSession();
+  if (auth !== true) return auth;
 
-    return product;
+  await prisma.product.update({
+    where: { id: productId }, // <- string, not { equals: string }
+    data: { isFeatured: value },
   });
 
   revalidatePath("/admin/products");
-  return { ok: true, id: created.id };
+  return { ok: true };
 }
 
-export async function updateProduct(id: string, formData: FormData) {
-  const session = (await getServerSession(authOptions)) as Session | null;
-  if (!isAdmin(session)) throw new Error("Forbidden");
+/** ---------- SET PRIMARY IMAGE ---------- **/
+export async function setPrimaryProductImage(productId: string, imageId: string): Promise<ActionResult> {
+  if (!productId || !imageId) return { ok: false, reason: "INVALID_INPUT" };
+  const auth = await requireAdminSession();
+  if (auth !== true) return auth;
 
-  const base = {
-    name: formData.get("name")?.toString(),
-    price: formData.get("price") ? Number(formData.get("price")) : undefined,
-    brandName: formData.get("brandName")?.toString(),
-    stock: formData.get("stock") ? Number(formData.get("stock")) : undefined,
-    isFeatured: formData.get("isFeatured") ? String(formData.get("isFeatured")) === "on" : undefined,
-    primaryImageId: formData.get("primaryImageId")?.toString(),
-    removedImageIds: (formData.getAll("removedImageIds") ?? []).map(String),
-  };
-
-  const parsed = productUpdateSchema.safeParse(base);
-  if (!parsed.success) throw new Error(parsed.error.message);
-
-  const newFiles: File[] = [];
-  for (const v of formData.getAll("images")) {
-    if (v instanceof File && v.size > 0) newFiles.push(v);
-  }
-  const newUploads = await Promise.all(newFiles.map(uploadImage));
-
-  await prisma.$transaction(async (tx) => {
-    const { removedImageIds = [], ...productData } = parsed.data;
-
-    if (Object.keys(productData).length > 0) {
-      await tx.product.update({ where: { id }, data: productData });
-    }
-
-    if (removedImageIds.length) {
-      await tx.productImage.deleteMany({
-        where: { id: { in: removedImageIds }, productId: id },
-      });
-      const product = await tx.product.findUnique({ where: { id } });
-      if (product?.primaryImageId && removedImageIds.includes(product.primaryImageId)) {
-        await tx.product.update({ where: { id }, data: { primaryImageId: null } });
-      }
-    }
-
-    if (newUploads.length) {
-      const existingCount = await tx.productImage.count({ where: { productId: id } });
-      const created = await Promise.all(
-        newUploads.map((u, i) =>
-          tx.productImage.create({
-            data: { productId: id, url: u.url, sortOrder: existingCount + i },
-          })
-        )
-      );
-      const product = await tx.product.findUnique({ where: { id } });
-      if (!product?.primaryImageId && created.length) {
-        await tx.product.update({ where: { id }, data: { primaryImageId: created[0].id } });
-      }
-    }
+  const image = await prisma.productImage.findFirst({
+    where: { id: imageId, productId },
+    select: { id: true },
   });
+  if (!image) return { ok: false, reason: "NOT_FOUND" };
 
-  revalidatePath("/admin/products");
-  return { ok: true };
-}
-
-export async function deleteProduct(id: string) {
-  const session = (await getServerSession(authOptions)) as Session | null;
-  if (!isAdmin(session)) throw new Error("Forbidden");
-
-  await prisma.product.delete({ where: { id } });
-  revalidatePath("/admin/products");
-  return { ok: true };
-}
-
-export async function setPrimaryImage(productId: string, imageId: string) {
-  const session = (await getServerSession(authOptions)) as Session | null;
-  if (!isAdmin(session)) throw new Error("Forbidden");
-
-  await prisma.product.update({ where: { id: productId }, data: { primaryImageId: imageId } });
-  revalidatePath("/admin/products");
-  return { ok: true };
-}
-
-export async function removeImage(productId: string, imageId: string) {
-  const session = (await getServerSession(authOptions)) as Session | null;
-  if (!isAdmin(session)) throw new Error("Forbidden");
-
-  await prisma.$transaction(async (tx) => {
-    await tx.productImage.delete({ where: { id: imageId } });
-    const product = await tx.product.findUnique({ where: { id: productId } });
-    if (product?.primaryImageId === imageId) {
-      const next = await tx.productImage.findFirst({
-        where: { productId },
-        orderBy: { sortOrder: "asc" },
-      });
-      await tx.product.update({
-        where: { id: productId },
-        data: { primaryImageId: next?.id ?? null },
-      });
-    }
+  await prisma.product.update({
+    where: { id: productId },
+    data: { primaryImageId: image.id },
   });
 
   revalidatePath("/admin/products");
