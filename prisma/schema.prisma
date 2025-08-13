@@ -4,7 +4,11 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  // Runtime URL your app uses (can be a Data Proxy URL or a normal Postgres URL)
   url      = env("POSTGRES_URL")
+
+  // Direct connection for Prisma CLI (migrate, studio). Must be a *direct* postgres:// URL.
+  directUrl = env("POSTGRES_DIRECT_URL")
 }
 
 model Settings {
